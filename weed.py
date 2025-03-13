@@ -31,7 +31,7 @@ if uploaded_file:
         if response.status_code == 200:
             # Show the result
             result_image = Image.open(io.BytesIO(response.content))
-            st.image(result_image, caption="Detected Weeds", use_column_width=True)
+            st.image(result_image, caption="Detected Weeds", use_container_width=True)
         else:
             st.error("Failed to process the image. Try again!")
 
