@@ -4,7 +4,7 @@ import io
 from PIL import Image
 
 # Flask API URL
-FLASK_API_URL = "https://your-app-name.onrender.com/predict"  # Change to your deployed API URL if hosted online
+FLASK_API_URL = "https://flaskbackend-7lj5.onrender.com/"
 
 st.title("Weed Detection System 🌿🚜")
 
