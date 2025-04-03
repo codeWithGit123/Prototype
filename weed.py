@@ -9,7 +9,7 @@ import requests
 from ultralytics import YOLO
 import numpy as np
 import cv2  # OpenCV for preprocessing
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode
 
 
 # Load YOLO model
@@ -176,10 +176,11 @@ def main():
         if start_button:
             st.success("Camera started!")
             webrtc_ctx = webrtc_streamer(
-                key="camera",
-                video_transformer_factory=WeedDetectionTransformer
-            )
-
+            key="camera",
+            mode=WebRtcMode.SENDRECV,
+            video_transformer_factory=WeedDetectionTransformer,
+            async_processing=True
+        )
             if webrtc_ctx and webrtc_ctx.state.playing:
                 while webrtc_ctx.video_receiver:
                     frame = webrtc_ctx.video_receiver.get_frame()
