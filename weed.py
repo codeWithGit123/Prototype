@@ -8,12 +8,11 @@ import time
 import numpy as np
 import cv2
 from ultralytics import YOLO
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode
 
 # --------------------------
 # Load YOLO Model
 # --------------------------
-model = YOLO("Pred.pt")  # Replace with your model path
+model = YOLO("Pred.pt")  # Replace with your trained model path
 
 # --------------------------
 # MongoDB Connection
@@ -27,58 +26,98 @@ images_collection = db["images"]
 # Helper Functions
 # --------------------------
 def save_image(user_id, image_bytes):
+    """Save detected image to MongoDB"""
     images_collection.insert_one({"user_id": user_id, "image": image_bytes})
 
 def get_user_images(user_id):
+    """Retrieve user's detection history"""
     return list(images_collection.find({"user_id": user_id}))
 
 def delete_image(image_id):
+    """Delete an image from history"""
     images_collection.delete_one({"_id": ObjectId(image_id)})
 
 def hash_password(password):
+    """Hash password using bcrypt"""
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
 def verify_password(password, hashed):
+    """Verify hashed password"""
     return bcrypt.checkpw(password.encode('utf-8'), hashed)
 
 # --------------------------
-# Weed Detection Transformer for Live Camera
-# --------------------------
-class WeedDetectionTransformer(VideoTransformerBase):
-    def __init__(self):
-        self.model = model
-
-    def transform(self, frame):
-        image = frame.to_ndarray(format="bgr24")
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        detected, result_image = detect_weeds(image_rgb)
-        if detected and result_image is not None:
-            return cv2.cvtColor(result_image, cv2.COLOR_RGB2BGR)
-        return image
-
-# --------------------------
-# Weed Detection for Uploaded Images
+# Weed Detection Function
 # --------------------------
 def detect_weeds(image):
+    """Detect weeds using the YOLO model"""
     results = model(image)
     detected = False
     result_image = None
     for result in results:
         if len(result.boxes) > 0:
             detected = True
-            result_image = result.plot()  # Returns annotated image
+            result_image = result.plot()  # Annotated image
     return detected, result_image
 
 # --------------------------
-# Streamlit Application
+# Live Camera Detection (Using OpenCV)
+# --------------------------
+def mobile_camera_detection(camera_source=0):
+    """Live weed detection using OpenCV"""
+    st.subheader("Live Weed Detection using OpenCV")
+
+    source_type = st.radio("Select Camera Source:", ["USB Webcam", "Mobile (IP Camera)"])
+    
+    if source_type == "Mobile (IP Camera)":
+        ip_url = st.text_input("Enter Mobile Camera URL", "http://192.168.1.100:8080/video")
+        camera_source = ip_url  # Use IP camera stream
+    
+    start_button = st.button("Start Camera")
+    stop_button = st.button("Stop Camera")
+
+    frame_placeholder = st.empty()  # Placeholder for video frames
+
+    if start_button:
+        cap = cv2.VideoCapture(camera_source)  # Open camera stream
+        
+        if not cap.isOpened():
+            st.error("Error: Unable to access the camera.")
+            return
+        
+        st.success("Camera started successfully!")
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                st.warning("Failed to capture frame")
+                break
+            
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+            detected, result_image = detect_weeds(frame_rgb)
+
+            if detected and result_image is not None:
+                frame_rgb = result_image  # Show detected frame
+
+            img_pil = Image.fromarray(frame_rgb)  # Convert NumPy array to PIL image
+            frame_placeholder.image(img_pil, caption="Live Weed Detection", use_column_width=True)
+
+            if stop_button:
+                break
+
+        cap.release()
+        st.warning("Camera stopped!")
+
+# --------------------------
+# Streamlit App
 # --------------------------
 def main():
     st.set_page_config(page_title="AgroGuard", layout="wide")
-    st.title("AgroGuard Cotton Weed Detection System")
+    st.title("🌱 AgroGuard - Cotton Weed Detection System")
 
     menu = ["Home", "Signup", "Login", "History", "Mobile Camera Detection"]
     choice = st.sidebar.selectbox("Menu", menu)
 
+    # Show logged-in user info
     if 'user' in st.session_state:
         st.sidebar.markdown(f"**Welcome, {st.session_state['user']['username']}!**")
         if st.sidebar.button("Logout"):
@@ -144,44 +183,10 @@ def main():
                 st.error("Invalid username or password")
 
     # --------------------------
-    # Live Camera Detection (Fixed WebRTC Permissions)
+    # Mobile Camera Detection (Using OpenCV)
     # --------------------------
     elif choice == "Mobile Camera Detection":
-        st.subheader("Live Weed Detection using Mobile Camera")
-
-        # Ensure Camera Permissions
-        st.write(
-            """
-            - **Ensure HTTPS** (WebRTC doesn't work on HTTP)
-            - **Manually Allow Camera Access** in browser settings.
-            """
-        )
-
-        # Fix WebRTC State Issues
-        if "camera_active" not in st.session_state:
-            st.session_state["camera_active"] = False
-
-        try:
-            webrtc_ctx = webrtc_streamer(
-                key="camera",
-                mode=WebRtcMode.SENDRECV,
-                video_transformer_factory=WeedDetectionTransformer,
-                async_processing=True,
-                rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-                video_html_attrs={"autoplay": True, "muted": True, "playsinline": True}
-            )
-        except Exception as e:
-            st.error(f"Error starting camera: {e}")
-            st.warning("Please allow camera access in your browser settings and refresh the page.")
-
-        if webrtc_ctx and webrtc_ctx.state.playing:
-            if not st.session_state["camera_active"]:
-                st.session_state["camera_active"] = True
-                st.success("Camera started! Grant permission if prompted.")
-        else:
-            if st.session_state["camera_active"]:
-                st.session_state["camera_active"] = False
-                st.error("Camera access denied! Please allow camera access in browser settings.")
+        mobile_camera_detection()  # Call OpenCV-based detection
 
     # --------------------------
     # View Detection History
