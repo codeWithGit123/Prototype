@@ -89,7 +89,7 @@ def main():
     st.title("AgroGuard Cotton Weed Detection System")
 
     # Sidebar Menu
-    menu = ["Home", "Signup", "Login", "History", "Webcam Detection"]
+    menu = ["Home", "Signup", "Login", "History", "Mobile Camera Detection"]
     choice = st.sidebar.selectbox("Menu", menu)
 
     # Display welcome message and logout option if logged in
@@ -152,18 +152,20 @@ def main():
             else:
                 st.error("Invalid username or password")
 
-    if choice == "Webcam Detection":
-        st.subheader("Live Weed Detection using Webcam")
-        start_button = st.button("Start Webcam")
-        stop_button = st.button("Stop Webcam")
+    if choice == "Mobile Camera Detection":
+        st.subheader("Live Weed Detection using Mobile Camera")
+        start_button = st.button("Start Camera")
+        stop_button = st.button("Stop Camera")
         frame_placeholder = st.empty()
         weeds_placeholder = st.empty()
 
         if start_button:
-            cap = cv2.VideoCapture(0)
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
+            st.success("Camera started!")
+            webrtc_ctx = st_webrtc.VideoTransformerBase()
+            
+            while webrtc_ctx.video_receiver:
+                frame = webrtc_ctx.video_receiver.get_frame()
+                if frame is None:
                     st.warning("Failed to capture frame")
                     break
                 
@@ -171,16 +173,15 @@ def main():
                 detected, result_image, weeds_info = detect_weeds(frame)
                 
                 if detected and result_image is not None:
-                    frame_placeholder.image(result_image, caption="Weed Detection", use_container_width=True)
+                    frame_placeholder.image(result_image, caption="Weed Detection", use_column_width=True)
                     weeds_placeholder.write("**Detected Weeds:**")
                     for name, conf in weeds_info:
                         weeds_placeholder.write(f"{name}: {conf:.2f}")
                 else:
-                    frame_placeholder.image(frame, caption="No Weed Detected", use_container_width=True)
+                    frame_placeholder.image(frame, caption="No Weed Detected", use_column_width=True)
                 
                 if stop_button:
-                    cap.release()
-                    cv2.destroyAllWindows()
+                    st.warning("Camera stopped!")
                     break
 
     elif choice == "History":
