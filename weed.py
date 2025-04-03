@@ -41,6 +41,18 @@ def hash_password(password):
 def verify_password(password, hashed):
     return bcrypt.checkpw(password.encode('utf-8'), hashed)
 
+class WeedDetectionTransformer(VideoTransformerBase):
+    def __init__(self):
+        self.model = model
+
+    def transform(self, frame):
+        image = frame.to_ndarray(format="bgr24")
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        detected, result_image, weeds_info = detect_weeds(image_rgb)
+        if detected and result_image is not None:
+            return cv2.cvtColor(result_image, cv2.COLOR_RGB2BGR)
+        return image
+
 def preprocess_image(image):
     """
     Preprocess the image by converting it to a NumPy array, resizing it,
@@ -188,9 +200,13 @@ def main():
         st.subheader("Live Weed Detection using Mobile Camera")
         st.success("Press 'Start' to begin camera feed.")
 
-        webrtc_ctx = webrtc_streamer(key="camera", video_transformer_factory=WeedDetectionTransformer)
+        webrtc_ctx = webrtc_streamer(
+            key="camera",
+            mode=WebRtcMode.SENDRECV,
+            video_transformer_factory=WeedDetectionTransformer
+        )
 
-        if webrtc_ctx.state.playing:
+        if webrtc_ctx and webrtc_ctx.state.playing:
             st.success("Camera started!")
         else:
             st.warning("Camera stopped!")
