@@ -11,6 +11,7 @@ import numpy as np
 import cv2  # OpenCV for preprocessing
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
+
 # Load YOLO model
 model = YOLO("Pred.pt")  # Replace with your trained model path
 
@@ -201,10 +202,10 @@ def main():
         st.success("Press 'Start' to begin camera feed.")
 
         webrtc_ctx = webrtc_streamer(
-            key="camera",
-            mode=WebRtcMode.SENDRECV,
-            video_transformer_factory=WeedDetectionTransformer
-        )
+    key="camera",
+    video_transformer_factory=WeedDetectionTransformer
+)
+
 
         if webrtc_ctx and webrtc_ctx.state.playing:
             st.success("Camera started!")
