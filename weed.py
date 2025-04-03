@@ -179,7 +179,8 @@ def main():
             key="camera",
             mode=WebRtcMode.SENDRECV,
             video_transformer_factory=WeedDetectionTransformer,
-            async_processing=True
+            async_processing=True,
+            video_html_attrs={"autoplay": True, "muted": True, "playsinline": True}
         )
             if webrtc_ctx and webrtc_ctx.state.playing:
                 while webrtc_ctx.video_receiver:
