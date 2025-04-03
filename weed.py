@@ -5,18 +5,15 @@ import bcrypt
 from PIL import Image
 import io
 import time
-import numpy as np
-import cv2
+import requests
 from ultralytics import YOLO
+import numpy as np
+import cv2  # OpenCV for preprocessing
 
-# --------------------------
-# Load YOLO Model
-# --------------------------
+# Load YOLO model
 model = YOLO("Pred.pt")  # Replace with your trained model path
 
-# --------------------------
-# MongoDB Connection
-# --------------------------
+# MongoDB Connection (update the connection string as needed)
 client = pymongo.MongoClient("mongodb+srv://mdabdur2004:ArFeb2004@cluster0.zq6ldvu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 db = client["agroguard"]
 users_collection = db["users"]
@@ -26,107 +23,82 @@ images_collection = db["images"]
 # Helper Functions
 # --------------------------
 def save_image(user_id, image_bytes):
-    """Save detected image to MongoDB"""
-    images_collection.insert_one({"user_id": user_id, "image": image_bytes})
+    images_collection.insert_one({
+        "user_id": user_id,
+        "image": image_bytes
+    })
 
 def get_user_images(user_id):
-    """Retrieve user's detection history"""
     return list(images_collection.find({"user_id": user_id}))
 
 def delete_image(image_id):
-    """Delete an image from history"""
     images_collection.delete_one({"_id": ObjectId(image_id)})
 
 def hash_password(password):
-    """Hash password using bcrypt"""
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
 def verify_password(password, hashed):
-    """Verify hashed password"""
     return bcrypt.checkpw(password.encode('utf-8'), hashed)
 
-# --------------------------
-# Weed Detection Function
-# --------------------------
+def preprocess_image(image):
+    """
+    Preprocess the image by converting it to a NumPy array, resizing it,
+    enhancing sharpness to remove blurriness, and applying random brightness augmentation.
+    """
+    # Convert PIL Image to numpy array
+    image_np = np.array(image)
+    
+    # Resize image to 640x640
+    resized = cv2.resize(image_np, (640, 640))
+    
+    # Sharpening using an unsharp mask (helps remove blurriness)
+    # Apply Gaussian blur
+    gaussian = cv2.GaussianBlur(resized, (0, 0), 3)
+    # Sharpen: add weighted difference
+    sharpened = cv2.addWeighted(resized, 1.5, gaussian, -0.5, 0)
+    
+    # Augmentation: Random brightness adjustment
+    # Convert from RGB to HSV color space for brightness control
+    hsv = cv2.cvtColor(sharpened, cv2.COLOR_RGB2HSV)
+    # Random brightness factor between 0.8 and 1.2
+    brightness_factor = np.random.uniform(0.8, 1.2)
+    hsv[:, :, 2] = np.clip(hsv[:, :, 2] * brightness_factor, 0, 255).astype(np.uint8)
+    # Convert back to RGB
+    augmented = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+    
+    return augmented
+
+
 def detect_weeds(image):
-    """Detect weeds using the YOLO model"""
+    """
+    Pass the preprocessed image to the YOLO model and return detection result.
+    """
     results = model(image)
     detected = False
     result_image = None
     for result in results:
         if len(result.boxes) > 0:
             detected = True
-            result_image = result.plot()  # Annotated image
+            result_image = result.plot()  # Annotated image as a NumPy array
     return detected, result_image
-
 # --------------------------
-# Live Camera Detection (Using OpenCV)
-# --------------------------
-def mobile_camera_detection(camera_source=0):
-    """Live weed detection using OpenCV"""
-    st.subheader("Live Weed Detection using OpenCV")
-
-    source_type = st.radio("Select Camera Source:", ["USB Webcam", "Mobile (IP Camera)"])
-    
-    if source_type == "Mobile (IP Camera)":
-        ip_url = st.text_input("Enter Mobile Camera URL", "http://192.168.1.100:8080/video")
-        camera_source = ip_url  # Use IP camera stream
-    
-    start_button = st.button("Start Camera")
-    stop_button = st.button("Stop Camera")
-
-    frame_placeholder = st.empty()  # Placeholder for video frames
-
-    if start_button:
-        cap = cv2.VideoCapture(camera_source)  # Open camera stream
-        
-        if not cap.isOpened():
-            st.error("Error: Unable to access the camera.")
-            return
-        
-        st.success("Camera started successfully!")
-        
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                st.warning("Failed to capture frame")
-                break
-            
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
-            detected, result_image = detect_weeds(frame_rgb)
-
-            if detected and result_image is not None:
-                frame_rgb = result_image  # Show detected frame
-
-            img_pil = Image.fromarray(frame_rgb)  # Convert NumPy array to PIL image
-            frame_placeholder.image(img_pil, caption="Live Weed Detection", use_column_width=True)
-
-            if stop_button:
-                break
-
-        cap.release()
-        st.warning("Camera stopped!")
-
-# --------------------------
-# Streamlit App
+# Main Application
 # --------------------------
 def main():
     st.set_page_config(page_title="AgroGuard", layout="wide")
-    st.title("🌱 AgroGuard - Cotton Weed Detection System")
+    st.title("AgroGuard Cotton Weed Detection System")
 
-    menu = ["Home", "Signup", "Login", "History", "Mobile Camera Detection"]
+    # Sidebar Menu
+    menu = ["Home", "Signup", "Login", "History", "Webcam Detection"]
     choice = st.sidebar.selectbox("Menu", menu)
 
-    # Show logged-in user info
+    # Display welcome message and logout option if logged in
     if 'user' in st.session_state:
         st.sidebar.markdown(f"**Welcome, {st.session_state['user']['username']}!**")
         if st.sidebar.button("Logout"):
             del st.session_state["user"]
             st.sidebar.success("Logged out successfully!")
 
-    # --------------------------
-    # Home: Upload Image for Detection
-    # --------------------------
     if choice == "Home":
         st.subheader("Cotton Weed Detection")
         uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
@@ -138,21 +110,22 @@ def main():
             if st.button("Detect Weeds"):
                 with st.spinner("Processing..."):
                     time.sleep(1)
-                    detected, result_array = detect_weeds(np.array(image))
-
+                    # Preprocess the image before detection
+                    preprocessed_image = preprocess_image(image)
+                    detected, result_array = detect_weeds(preprocessed_image)
+                
                 if detected and result_array is not None:
                     st.image(result_array, caption="Detected Weeds", use_container_width=True)
+                    # Convert NumPy array to PIL image for saving
+                    pil_img = Image.fromarray(result_array)
                     if 'user' in st.session_state:
                         img_bytes = io.BytesIO()
-                        Image.fromarray(result_array).save(img_bytes, format="JPEG")
+                        pil_img.save(img_bytes, format="JPEG")
                         save_image(st.session_state['user']['_id'], img_bytes.getvalue())
                         st.success("Detection saved successfully!")
                 else:
                     st.warning("No Weed Detected")
 
-    # --------------------------
-    # Signup
-    # --------------------------
     elif choice == "Signup":
         st.subheader("Signup")
         new_username = st.text_input("Username")
@@ -166,9 +139,6 @@ def main():
                 users_collection.insert_one({"username": new_username, "password": hashed_pw})
                 st.success("Account created successfully!")
 
-    # --------------------------
-    # Login
-    # --------------------------
     elif choice == "Login":
         st.subheader("Login")
         username = st.text_input("Username")
@@ -182,25 +152,56 @@ def main():
             else:
                 st.error("Invalid username or password")
 
-    # --------------------------
-    # Mobile Camera Detection (Using OpenCV)
-    # --------------------------
-    elif choice == "Mobile Camera Detection":
-        mobile_camera_detection()  # Call OpenCV-based detection
+    if choice == "Webcam Detection":
+        st.subheader("Live Weed Detection using Webcam")
+        start_button = st.button("Start Webcam")
+        stop_button = st.button("Stop Webcam")
+        frame_placeholder = st.empty()
+        weeds_placeholder = st.empty()
 
-    # --------------------------
-    # View Detection History
-    # --------------------------
+        if start_button:
+            cap = cv2.VideoCapture(0)
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    st.warning("Failed to capture frame")
+                    break
+                
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                detected, result_image, weeds_info = detect_weeds(frame)
+                
+                if detected and result_image is not None:
+                    frame_placeholder.image(result_image, caption="Weed Detection", use_container_width=True)
+                    weeds_placeholder.write("**Detected Weeds:**")
+                    for name, conf in weeds_info:
+                        weeds_placeholder.write(f"{name}: {conf:.2f}")
+                else:
+                    frame_placeholder.image(frame, caption="No Weed Detected", use_container_width=True)
+                
+                if stop_button:
+                    cap.release()
+                    cv2.destroyAllWindows()
+                    break
+
     elif choice == "History":
         st.subheader("Detection History")
         if 'user' in st.session_state:
-            images = get_user_images(st.session_state['user']['_id'])
+            user_id = st.session_state['user']['_id']
+            images = list(get_user_images(user_id))
             if images:
                 for img in images:
-                    st.image(Image.open(io.BytesIO(img['image'])), caption="Previous Detection", use_container_width=True)
-                    if st.button("Delete", key=str(img['_id'])):
-                        delete_image(img['_id'])
-                        st.success("Image deleted successfully!")
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    with col1:
+                        image_bytes = img['image']
+                        hist_image = Image.open(io.BytesIO(image_bytes))
+                        st.image(hist_image, caption="Previous Detection", use_container_width=True)
+                    with col2:
+                        img_bytes = io.BytesIO(image_bytes)
+                        st.download_button("Download", img_bytes, file_name=f"detection_{img['_id']}.jpg", mime="image/jpeg", key=f"download_{img['_id']}")
+                    with col3:
+                        if st.button("Delete", key=str(img['_id'])):
+                            delete_image(img['_id'])
+                            st.success("Image deleted successfully!")
             else:
                 st.info("No detection history found.")
         else:
