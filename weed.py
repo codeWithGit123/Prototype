@@ -166,12 +166,54 @@ def main():
             else:
                 st.error("Invalid username or password")
 
+    # if choice == "Mobile Camera Detection":
+    #     st.subheader("Live Weed Detection using Mobile Camera")
+    #     start_button = st.button("Start Camera")
+    #     stop_button = st.button("Stop Camera")
+    #     frame_placeholder = st.empty()
+    #     weeds_placeholder = st.empty()
+
+    #     if "camera_active" not in st.session_state:
+    #         st.session_state["camera_active"] = False
+
+    #     webrtc_ctx = webrtc_streamer(
+    #         key="camera",
+    #         mode=WebRtcMode.SENDRECV,
+    #         video_transformer_factory=WeedDetectionTransformer,
+    #         async_processing=True,
+    #         video_html_attrs={"autoplay": True, "muted": True, "playsinline": True}  # Fix for mobile
+    #     )
+
+    #     if webrtc_ctx and webrtc_ctx.state.playing:
+    #         if not st.session_state["camera_active"]:
+    #             st.session_state["camera_active"] = True
+    #             st.success("Camera started!")
+    #     else:
+    #         if st.session_state["camera_active"]:
+    #             st.session_state["camera_active"] = False
+    #             st.warning("Camera stopped! Make sure to grant camera access.")
+
+    #         if webrtc_ctx and webrtc_ctx.state.playing:
+    #             while webrtc_ctx.video_receiver:
+    #                 frame = webrtc_ctx.video_receiver.get_frame()
+    #                 if frame is None:
+    #                     st.warning("Failed to capture frame")
+    #                     break
+    #                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    #                 detected, result_image, weeds_info = detect_weeds(frame)
+    #                 if detected and result_image is not None:
+    #                     frame_placeholder.image(result_image, caption="Weed Detection", use_column_width=True)
+    #                     weeds_placeholder.write("**Detected Weeds:**")
+    #                     for name, conf in weeds_info:
+    #                         weeds_placeholder.write(f"{name}: {conf:.2f}")
+    #                 else:
+    #                     frame_placeholder.image(frame, caption="No Weed Detected", use_column_width=True)
+    #                 if stop_button:
+    #                     st.warning("Camera stopped!")
+    #                     break
     if choice == "Mobile Camera Detection":
         st.subheader("Live Weed Detection using Mobile Camera")
-        start_button = st.button("Start Camera")
-        stop_button = st.button("Stop Camera")
-        frame_placeholder = st.empty()
-        weeds_placeholder = st.empty()
+        st.success("Press 'Start' to begin camera feed.")
 
         if "camera_active" not in st.session_state:
             st.session_state["camera_active"] = False
@@ -181,36 +223,19 @@ def main():
             mode=WebRtcMode.SENDRECV,
             video_transformer_factory=WeedDetectionTransformer,
             async_processing=True,
-            video_html_attrs={"autoplay": True, "muted": True, "playsinline": True}  # Fix for mobile
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},  # Ensures WebRTC works properly
+            video_html_attrs={"autoplay": True, "muted": True, "playsinline": True}  # Fix for mobile browsers
         )
 
         if webrtc_ctx and webrtc_ctx.state.playing:
             if not st.session_state["camera_active"]:
                 st.session_state["camera_active"] = True
-                st.success("Camera started!")
+                st.success("Camera started! Grant permission if prompted.")
         else:
             if st.session_state["camera_active"]:
                 st.session_state["camera_active"] = False
-                st.warning("Camera stopped! Make sure to grant camera access.")
+                st.error("Camera access denied! Please allow camera access in browser settings.")
 
-            if webrtc_ctx and webrtc_ctx.state.playing:
-                while webrtc_ctx.video_receiver:
-                    frame = webrtc_ctx.video_receiver.get_frame()
-                    if frame is None:
-                        st.warning("Failed to capture frame")
-                        break
-                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    detected, result_image, weeds_info = detect_weeds(frame)
-                    if detected and result_image is not None:
-                        frame_placeholder.image(result_image, caption="Weed Detection", use_column_width=True)
-                        weeds_placeholder.write("**Detected Weeds:**")
-                        for name, conf in weeds_info:
-                            weeds_placeholder.write(f"{name}: {conf:.2f}")
-                    else:
-                        frame_placeholder.image(frame, caption="No Weed Detected", use_column_width=True)
-                    if stop_button:
-                        st.warning("Camera stopped!")
-                        break
 
 
     elif choice == "History":
