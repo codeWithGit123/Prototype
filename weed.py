@@ -173,15 +173,26 @@ def main():
         frame_placeholder = st.empty()
         weeds_placeholder = st.empty()
 
-        if start_button:
-            st.success("Camera started!")
-            webrtc_ctx = webrtc_streamer(
+         if "camera_active" not in st.session_state:
+            st.session_state["camera_active"] = False
+
+        webrtc_ctx = webrtc_streamer(
             key="camera",
             mode=WebRtcMode.SENDRECV,
             video_transformer_factory=WeedDetectionTransformer,
             async_processing=True,
-            video_html_attrs={"autoplay": True, "muted": True, "playsinline": True}
+            video_html_attrs={"autoplay": True, "muted": True, "playsinline": True}  # Fix for mobile
         )
+
+        if webrtc_ctx and webrtc_ctx.state.playing:
+            if not st.session_state["camera_active"]:
+                st.session_state["camera_active"] = True
+                st.success("Camera started!")
+        else:
+            if st.session_state["camera_active"]:
+                st.session_state["camera_active"] = False
+                st.warning("Camera stopped! Make sure to grant camera access.")
+
             if webrtc_ctx and webrtc_ctx.state.playing:
                 while webrtc_ctx.video_receiver:
                     frame = webrtc_ctx.video_receiver.get_frame()
