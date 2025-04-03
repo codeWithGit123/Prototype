@@ -173,7 +173,7 @@ def main():
         frame_placeholder = st.empty()
         weeds_placeholder = st.empty()
 
-         if "camera_active" not in st.session_state:
+        if "camera_active" not in st.session_state:
             st.session_state["camera_active"] = False
 
         webrtc_ctx = webrtc_streamer(
