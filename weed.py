@@ -9,6 +9,7 @@ import requests
 from ultralytics import YOLO
 import numpy as np
 import cv2  # OpenCV for preprocessing
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
 # Load YOLO model
 model = YOLO("Pred.pt")  # Replace with your trained model path
