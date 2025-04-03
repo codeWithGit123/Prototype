@@ -218,14 +218,19 @@ def main():
         if "camera_active" not in st.session_state:
             st.session_state["camera_active"] = False
 
-        webrtc_ctx = webrtc_streamer(
-            key="camera",
-            mode=WebRtcMode.SENDRECV,
-            video_transformer_factory=WeedDetectionTransformer,
-            async_processing=True,
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},  # Ensures WebRTC works properly
-            video_html_attrs={"autoplay": True, "muted": True, "playsinline": True}  # Fix for mobile browsers
-        )
+        # Re-trigger permissions if denied
+        try:
+            webrtc_ctx = webrtc_streamer(
+                key="camera",
+                mode=WebRtcMode.SENDRECV,
+                video_transformer_factory=WeedDetectionTransformer,
+                async_processing=True,
+                rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},  # Ensures WebRTC works properly
+                video_html_attrs={"autoplay": True, "muted": True, "playsinline": True}  # Fix for mobile browsers
+            )
+        except Exception as e:
+            st.error(f"Error starting camera: {e}")
+            st.warning("Please allow camera access in your browser settings and refresh the page.")
 
         if webrtc_ctx and webrtc_ctx.state.playing:
             if not st.session_state["camera_active"]:
