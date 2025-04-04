@@ -1,8 +1,7 @@
-ultralytics
-numpy
-opencv-python-headless
-opencv-python
-pillow
+streamlit
 pymongo
 bcrypt
-streamlit
+pillow
+opencv-python-headless
+numpy
+ultralytics
