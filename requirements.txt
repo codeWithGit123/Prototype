@@ -1,8 +1,8 @@
 ultralytics
 numpy
 opencv-python-headless
+opencv-python
 pillow
 pymongo
 bcrypt
 streamlit
-streamlit_webrtc
