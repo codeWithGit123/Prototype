@@ -67,10 +67,10 @@ def main():
 
         if uploaded_file:
             image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_column_width=True)
+            st.image(image, caption="Uploaded Image", use_container_width=True)
             if st.button("Detect Weeds"):
                 detected_image = detect_objects(np.array(image))
-                st.image(detected_image, caption="Detected Weeds", use_column_width=True)
+                st.image(detected_image, caption="Detected Weeds", use_container_width=True)
     
     elif choice == "Mobile Camera Detection":
         class VideoProcessor(VideoTransformerBase):
