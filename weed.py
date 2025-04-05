@@ -49,12 +49,12 @@ def detect_objects(frame):
         conf = float(box[4])
         cls = int(box[5])
         
-        # Custom styling parameters
+        # Adjusted styling parameters
         box_color = (0, 255, 0)  # Green color (BGR format)
-        text_color = (0, 0, 0)   # Black text
-        font_scale = 0.8
-        thickness = 2
-        font = cv2.FONT_HERSHEY_SIMPLEX
+        text_color = (0, 0, 0)    # Black text
+        font_scale = 0.7          # Reduced from 1.0
+        thickness = 1             # Reduced from 2
+        font = cv2.FONT_HERSHEY_SIMPLEX  # Simpler font
         
         # Draw bounding box
         cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, thickness)
@@ -63,21 +63,15 @@ def detect_objects(frame):
         label = f"{model.names[cls]} {conf:.2f}"
         (text_width, text_height), _ = cv2.getTextSize(label, font, font_scale, thickness)
         
-        # Calculate text background position
-        text_bg_x1 = x1
-        text_bg_y1 = y1 - text_height - 10
-        text_bg_x2 = x1 + text_width + 5
-        text_bg_y2 = y1
-        
-        # Draw text background
+        # Text background
         cv2.rectangle(frame, 
-                     (text_bg_x1, text_bg_y1),
-                     (text_bg_x2, text_bg_y2),
-                     box_color, -1)  # -1 fills the rectangle
+                     (x1, y1 - text_height - 5),
+                     (x1 + text_width + 5, y1),
+                     box_color, -1)
         
         # Put text
         cv2.putText(frame, label,
-                   (x1 + 3, y1 - 10),  # Offset from box
+                   (x1 + 2, y1 - 5),  # Adjusted position
                    font,
                    font_scale,
                    text_color,
@@ -88,12 +82,9 @@ def detect_objects(frame):
 class VideoProcessor(VideoTransformerBase):
     def __init__(self):
         self.model = model
-        self.last_update = time.time()
     
     def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
-        
-        # Perform detection
         results = self.model(img, verbose=False)
         annotated_frame = img.copy()
         
@@ -102,37 +93,36 @@ class VideoProcessor(VideoTransformerBase):
             conf = float(box[4])
             cls = int(box[5])
             
-            # Custom styling parameters
-            box_color = (0, 255, 0)  # Green color (BGR)
-            text_color = (0, 0, 0)    # Black text
-            font_scale = 1.0          # Larger font size
-            thickness = 3             # Thicker lines
-            font = cv2.FONT_HERSHEY_DUPLEX
+            # Adjusted parameters
+            box_color = (0, 255, 0)
+            text_color = (0, 0, 0)
+            font_scale = 0.6       # Smaller than image version
+            thickness = 1          # Thinner lines
+            font = cv2.FONT_HERSHEY_SIMPLEX
             
             # Draw bounding box
             cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), box_color, thickness)
             
-            # Create label with background
-            label = f"{self.model.names[cls].upper()} {conf:.2f}"
+            # Create label
+            label = f"{self.model.names[cls]} {conf:.2f}"
             (text_width, text_height), _ = cv2.getTextSize(label, font, font_scale, thickness)
             
             # Text background
             cv2.rectangle(annotated_frame,
-                         (x1, y1 - text_height - 15),
-                         (x1 + text_width + 10, y1 - 5),
+                         (x1, y1 - text_height - 5),
+                         (x1 + text_width + 5, y1),
                          box_color, -1)
             
             # Put text
             cv2.putText(annotated_frame, label,
-                        (x1 + 5, y1 - 10),
-                        font,
-                        font_scale,
-                        text_color,
-                        thickness,
-                        cv2.LINE_AA)
+                       (x1 + 2, y1 - 5),
+                       font,
+                       font_scale,
+                       text_color,
+                       thickness,
+                       cv2.LINE_AA)
         
         return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
-
 
 def main():
     menu = ["Home", "Signup", "Login", "History", "Mobile Camera Detection"]
