@@ -8,6 +8,8 @@ import time
 import cv2
 import numpy as np
 from ultralytics import YOLO
+import av
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
 # Load YOLO model
 @st.cache_resource
@@ -71,27 +73,44 @@ def main():
                 st.image(detected_image, caption="Detected Weeds", use_column_width=True)
     
     elif choice == "Mobile Camera Detection":
-        st.subheader("Live Mobile Camera Detection")
-        camera_index = st.selectbox("Select Camera", [0, 1], index=0)
-        start_button = st.button("▶️ Start Camera")
-        stop_button = st.button("⛔ Stop Camera")
-        frame_placeholder = st.empty()
+        class VideoProcessor(VideoTransformerBase):
+            def __init__(self):
+                self.model = model
+            
+            def recv(self, frame):
+                img = frame.to_ndarray(format="bgr24")
+                
+                # Perform detection
+                results = self.model(img, verbose=False)
+                annotated_frame = results[0].plot()  # Use YOLO's built-in plotting
+                
+                return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
         
-        if start_button:
-            cap = cv2.VideoCapture(camera_index)
-            while cap.isOpened():
-                success, frame = cap.read()
-                if not success:
-                    st.warning("❌ Could not access the camera. Please check permissions.")
-                    break
-                frame = detect_objects(frame)
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frame_placeholder.image(frame, channels="RGB", use_column_width=True)
+        # App layout
+        st.title("Real-Time Cotton Weed Detection (Mobile)")
+        st.markdown("""
+        ### Instructions:
+        1. Click 'Start Camera' below
+        2. Allow camera access when prompted
+        3. Point camera at cotton field
+        4. See real-time weed detection
+        """)
         
-        if stop_button:
-            cap.release()
-            cv2.destroyAllWindows()
-            frame_placeholder.empty()
+        # Camera component with start/stop controls
+        webrtc_ctx = webrtc_streamer(
+            key="example",
+            video_processor_factory=VideoProcessor,
+            rtc_configuration={  # Required for production
+                "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
+            },
+            media_stream_constraints={
+                "video": True,
+                "audio": False
+            }
+        )
+        
+        st.markdown("---")
+        st.info("ℹ️ Switch between front/rear camera using your device's camera toggle button")
 
 if __name__ == '__main__':
     main()
