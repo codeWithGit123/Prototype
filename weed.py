@@ -15,11 +15,7 @@ st.set_page_config(page_title="AgroGuard", layout="wide")
 st.title("AgroGuard Cotton Weed Detection System")
 
 # Load YOLO model
-@st.cache_resource
-def load_model():
-    return YOLO("Pred.pt")
-
-model = load_model()
+model = YOLO("Pred.pt")
 
 # MongoDB Connection
 client = pymongo.MongoClient("mongodb+srv://mdabdur2004:ArFeb2004@cluster0.zq6ldvu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
