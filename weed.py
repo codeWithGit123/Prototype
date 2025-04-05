@@ -11,6 +11,9 @@ from ultralytics import YOLO
 import av
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
+st.set_page_config(page_title="AgroGuard", layout="wide")
+st.title("AgroGuard Cotton Weed Detection System")
+
 # Load YOLO model
 @st.cache_resource
 def load_model():
@@ -49,9 +52,6 @@ def detect_objects(frame):
     return frame
 
 def main():
-    st.set_page_config(page_title="AgroGuard", layout="wide")
-    st.title("AgroGuard Cotton Weed Detection System")
-    
     menu = ["Home", "Signup", "Login", "History", "Mobile Camera Detection"]
     choice = st.sidebar.selectbox("Menu", menu)
 
