@@ -45,11 +45,94 @@ def verify_password(password, hashed):
 def detect_objects(frame):
     results = model(frame)
     for box in results[0].boxes.data:
-        x1, y1, x2, y2, conf, cls = map(int, box[:6])
-        label = f"{model.names[int(cls)]}: {conf:.2f}"
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        x1, y1, x2, y2 = map(int, box[:4])
+        conf = float(box[4])
+        cls = int(box[5])
+        
+        # Custom styling parameters
+        box_color = (0, 255, 0)  # Green color (BGR format)
+        text_color = (0, 0, 0)   # Black text
+        font_scale = 0.8
+        thickness = 2
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        
+        # Draw bounding box
+        cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, thickness)
+        
+        # Create label with background
+        label = f"{model.names[cls]} {conf:.2f}"
+        (text_width, text_height), _ = cv2.getTextSize(label, font, font_scale, thickness)
+        
+        # Calculate text background position
+        text_bg_x1 = x1
+        text_bg_y1 = y1 - text_height - 10
+        text_bg_x2 = x1 + text_width + 5
+        text_bg_y2 = y1
+        
+        # Draw text background
+        cv2.rectangle(frame, 
+                     (text_bg_x1, text_bg_y1),
+                     (text_bg_x2, text_bg_y2),
+                     box_color, -1)  # -1 fills the rectangle
+        
+        # Put text
+        cv2.putText(frame, label,
+                   (x1 + 3, y1 - 10),  # Offset from box
+                   font,
+                   font_scale,
+                   text_color,
+                   thickness,
+                   cv2.LINE_AA)
     return frame
+
+class VideoProcessor(VideoTransformerBase):
+    def __init__(self):
+        self.model = model
+        self.last_update = time.time()
+    
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+        
+        # Perform detection
+        results = self.model(img, verbose=False)
+        annotated_frame = img.copy()
+        
+        for box in results[0].boxes.data:
+            x1, y1, x2, y2 = map(int, box[:4])
+            conf = float(box[4])
+            cls = int(box[5])
+            
+            # Custom styling parameters
+            box_color = (0, 255, 0)  # Green color (BGR)
+            text_color = (0, 0, 0)    # Black text
+            font_scale = 1.0          # Larger font size
+            thickness = 3             # Thicker lines
+            font = cv2.FONT_HERSHEY_DUPLEX
+            
+            # Draw bounding box
+            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), box_color, thickness)
+            
+            # Create label with background
+            label = f"{self.model.names[cls].upper()} {conf:.2f}"
+            (text_width, text_height), _ = cv2.getTextSize(label, font, font_scale, thickness)
+            
+            # Text background
+            cv2.rectangle(annotated_frame,
+                         (x1, y1 - text_height - 15),
+                         (x1 + text_width + 10, y1 - 5),
+                         box_color, -1)
+            
+            # Put text
+            cv2.putText(annotated_frame, label,
+                        (x1 + 5, y1 - 10),
+                        font,
+                        font_scale,
+                        text_color,
+                        thickness,
+                        cv2.LINE_AA)
+        
+        return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
+
 
 def main():
     menu = ["Home", "Signup", "Login", "History", "Mobile Camera Detection"]
@@ -73,18 +156,18 @@ def main():
                 st.image(detected_image, caption="Detected Weeds", use_container_width=True)
     
     elif choice == "Mobile Camera Detection":
-        class VideoProcessor(VideoTransformerBase):
-            def __init__(self):
-                self.model = model
+        # class VideoProcessor(VideoTransformerBase):
+        #     def __init__(self):
+        #         self.model = model
             
-            def recv(self, frame):
-                img = frame.to_ndarray(format="bgr24")
+        #     def recv(self, frame):
+        #         img = frame.to_ndarray(format="bgr24")
                 
-                # Perform detection
-                results = self.model(img, verbose=False)
-                annotated_frame = results[0].plot()  # Use YOLO's built-in plotting
+        #         # Perform detection
+        #         results = self.model(img, verbose=False)
+        #         annotated_frame = results[0].plot()  # Use YOLO's built-in plotting
                 
-                return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
+        #         return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
         
         # App layout
         st.title("Real-Time Cotton Weed Detection (Mobile)")
