@@ -44,83 +44,25 @@ def verify_password(password, hashed):
 
 def detect_objects(frame):
     results = model(frame)
-    for box in results[0].boxes.data:
-        x1, y1, x2, y2 = map(int, box[:4])
-        conf = float(box[4])
-        cls = int(box[5])
-        
-        # Adjusted styling parameters
-        box_color = (0, 255, 0)  # Green color (BGR format)
-        text_color = (0, 0, 0)    # Black text
-        font_scale = 0.7          # Reduced from 1.0
-        thickness = 1             # Reduced from 2
-        font = cv2.FONT_HERSHEY_SIMPLEX  # Simpler font
-        
-        # Draw bounding box
-        cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, thickness)
-        
-        # Create label with background
-        label = f"{model.names[cls]} {conf:.2f}"
-        (text_width, text_height), _ = cv2.getTextSize(label, font, font_scale, thickness)
-        
-        # Text background
-        cv2.rectangle(frame, 
-                     (x1, y1 - text_height - 5),
-                     (x1 + text_width + 5, y1),
-                     box_color, -1)
-        
-        # Put text
-        cv2.putText(frame, label,
-                   (x1 + 2, y1 - 5),  # Adjusted position
-                   font,
-                   font_scale,
-                   text_color,
-                   thickness,
-                   cv2.LINE_AA)
-    return frame
+    return results[0].plot()
 
 class VideoProcessor(VideoTransformerBase):
     def __init__(self):
         self.model = model
+        self.annotate_kwargs = {
+            'conf': True,          # Show confidence
+            'line_width': 2,        # Bounding box thickness
+            'font_size': 0.6,       # Font size
+            'font': 'Arial.ttf',    # Font type
+            'labels': True          # Show class labels
+        }
     
     def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
         results = self.model(img, verbose=False)
-        annotated_frame = img.copy()
         
-        for box in results[0].boxes.data:
-            x1, y1, x2, y2 = map(int, box[:4])
-            conf = float(box[4])
-            cls = int(box[5])
-            
-            # Adjusted parameters
-            box_color = (0, 255, 0)
-            text_color = (0, 0, 0)
-            font_scale = 0.6       # Smaller than image version
-            thickness = 1          # Thinner lines
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            
-            # Draw bounding box
-            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), box_color, thickness)
-            
-            # Create label
-            label = f"{self.model.names[cls]} {conf:.2f}"
-            (text_width, text_height), _ = cv2.getTextSize(label, font, font_scale, thickness)
-            
-            # Text background
-            cv2.rectangle(annotated_frame,
-                         (x1, y1 - text_height - 5),
-                         (x1 + text_width + 5, y1),
-                         box_color, -1)
-            
-            # Put text
-            cv2.putText(annotated_frame, label,
-                       (x1 + 2, y1 - 5),
-                       font,
-                       font_scale,
-                       text_color,
-                       thickness,
-                       cv2.LINE_AA)
+        # Use YOLO's native plotting with custom parameters
+        annotated_frame = results[0].plot(**self.annotate_kwargs)
         
         return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
 
