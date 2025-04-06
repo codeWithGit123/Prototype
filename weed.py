@@ -82,22 +82,57 @@ def main():
             if st.button("Detect Weeds"):
                 detected_image = detect_objects(np.array(image))
                 st.image(detected_image, caption="Detected Weeds", use_container_width=True)
+    elif choice == "Signup":
+         st.subheader("Signup")
+         new_username = st.text_input("Username")
+         new_password = st.text_input("Password", type="password")
+ 
+         if st.button("Signup"):
+             if users_collection.find_one({"username": new_username}):
+                 st.warning("Username already exists")
+             else:
+                 hashed_pw = hash_password(new_password)
+                 users_collection.insert_one({"username": new_username, "password": hashed_pw})
+                 st.success("Account created successfully!")
+ 
+     elif choice == "Login":
+         st.subheader("Login")
+         username = st.text_input("Username")
+         password = st.text_input("Password", type="password")
+ 
+         if st.button("Login"):
+             user = users_collection.find_one({"username": username})
+             if user and verify_password(password, user['password']):
+                 st.session_state['user'] = user
+                 st.success(f"Logged in successfully! Welcome, {username}.")
+             else:
+                 st.error("Invalid username or password")
+ 
+     elif choice == "History":
+         st.subheader("Detection History")
+         if 'user' in st.session_state:
+             user_id = st.session_state['user']['_id']
+             images = list(get_user_images(user_id))
+             if images:
+                 for img in images:
+                     col1, col2, col3 = st.columns([3, 1, 1])
+                     with col1:
+                         image_bytes = img['image']
+                         hist_image = Image.open(io.BytesIO(image_bytes))
+                         st.image(hist_image, caption="Previous Detection", use_column_width=True)
+                     with col2:
+                         img_bytes = io.BytesIO(image_bytes)
+                         st.download_button("Download", img_bytes, file_name=f"detection_{img['_id']}.jpg", mime="image/jpeg", key=f"download_{img['_id']}")
+                     with col3:
+                         if st.button("Delete", key=str(img['_id'])):
+                             delete_image(img['_id'])
+                             st.success("Image deleted successfully!")
+             else:
+                 st.info("No detection history found.")
+         else:
+             st.warning("Please log in to view history")
     
     elif choice == "Mobile Camera Detection":
-        # class VideoProcessor(VideoTransformerBase):
-        #     def __init__(self):
-        #         self.model = model
-            
-        #     def recv(self, frame):
-        #         img = frame.to_ndarray(format="bgr24")
-                
-        #         # Perform detection
-        #         results = self.model(img, verbose=False)
-        #         annotated_frame = results[0].plot()  # Use YOLO's built-in plotting
-                
-        #         return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
-        
-        # App layout
         st.title("Real-Time Cotton Weed Detection (Mobile)")
         st.markdown("""
         ### Instructions:
