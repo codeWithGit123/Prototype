@@ -4,8 +4,6 @@ from bson import ObjectId
 import bcrypt
 from PIL import Image
 import io
-import time
-import cv2
 import numpy as np
 from ultralytics import YOLO
 import av
