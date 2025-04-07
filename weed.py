@@ -78,7 +78,7 @@ def main():
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Image", use_container_width=True)
             if st.button("Detect Weeds"):
-                detected_image = detect_objects(np.array(image))
+                detected_image = detect_objects(image)
                 st.image(detected_image, caption="Detected Weeds", use_container_width=True)
     
     elif choice == "Signup":
