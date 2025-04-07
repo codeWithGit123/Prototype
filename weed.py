@@ -120,7 +120,7 @@ def main():
                      with col1:
                          image_bytes = img['image']
                          hist_image = Image.open(io.BytesIO(image_bytes))
-                         st.image(hist_image, caption="Previous Detection", use_column_width=True)
+                         st.image(hist_image, caption="Previous Detection", use_container_width=True)
                      with col2:
                          img_bytes = io.BytesIO(image_bytes)
                          st.download_button("Download", img_bytes, file_name=f"detection_{img['_id']}.jpg", mime="image/jpeg", key=f"download_{img['_id']}")
