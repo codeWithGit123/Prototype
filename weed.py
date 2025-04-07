@@ -82,6 +82,7 @@ def main():
             if st.button("Detect Weeds"):
                 detected_image = detect_objects(np.array(image))
                 st.image(detected_image, caption="Detected Weeds", use_container_width=True)
+    
     elif choice == "Signup":
          st.subheader("Signup")
          new_username = st.text_input("Username")
@@ -95,7 +96,7 @@ def main():
                  users_collection.insert_one({"username": new_username, "password": hashed_pw})
                  st.success("Account created successfully!")
  
-     elif choice == "Login":
+    elif choice == "Login":
          st.subheader("Login")
          username = st.text_input("Username")
          password = st.text_input("Password", type="password")
