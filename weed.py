@@ -109,7 +109,7 @@ def main():
              else:
                  st.error("Invalid username or password")
  
-     elif choice == "History":
+    elif choice == "History":
          st.subheader("Detection History")
          if 'user' in st.session_state:
              user_id = st.session_state['user']['_id']
