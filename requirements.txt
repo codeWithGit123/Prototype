@@ -1,10 +1,9 @@
 streamlit
+streamlit-webrtc
 pymongo
 bcrypt
-pillow
-opencv-python-headless
-numpy
 ultralytics
-streamlit_webrtc
-aiortc
-opencv-python
+opencv-python-headless
+av
+Pillow
+numpy
