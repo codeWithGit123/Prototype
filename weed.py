@@ -77,7 +77,7 @@ def main():
         if uploaded_file:
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Image", use_container_width=True)
-           if st.button("Detect Weeds"):
+            if st.button("Detect Weeds"):
                 # Convert PIL image to array
                 img_array = np.array(image)
                 
