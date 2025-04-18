@@ -77,9 +77,68 @@ def main():
         if uploaded_file:
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Image", use_container_width=True)
-            if st.button("Detect Weeds"):
-                detected_image = detect_objects(image)
+           if st.button("Detect Weeds"):
+                # Convert PIL image to array
+                img_array = np.array(image)
+                
+                # Run detection
+                results = model(img_array)
+                result = results[0]
+            
+                # Plot and display
+                detected_image = result.plot()
                 st.image(detected_image, caption="Detected Weeds", use_container_width=True)
+            
+                # Save if user is logged in
+                if 'user' in st.session_state:
+                    # Convert annotated image to bytes
+                    img_pil = Image.fromarray(detected_image)
+                    img_byte_arr = io.BytesIO()
+                    img_pil.save(img_byte_arr, format='JPEG')
+                    img_bytes = img_byte_arr.getvalue()
+            
+                    save_image(st.session_state['user']['_id'], img_bytes)
+                    st.success("✅ Detection saved successfully!")
+            
+                # Weed class to herbicide mapping
+                herbicide_dict = {
+                    'Waterhemp': 'Glyphosate',
+                    'MorningGlory': 'Dicamba',
+                    'Purslane': 'Oxadiazon',
+                    'SpottedSpurge': 'Atrazine',
+                    'Carpetweed': 'Pendimethalin',
+                    'Ragweed': '2,4-D',
+                    'Eclipta': 'Bensulide',
+                    'PricklySida': 'Metribuzin',
+                    'PalmerAmaranth': 'Glufosinate',
+                    'Sicklepod': 'Imazethapyr',
+                    'Goosegrass': 'Fluazifop',
+                    'Cutleaf': 'Quinclorac'
+                }
+            
+                # Count detected classes
+                class_counts = {}
+                for cls_id in result.boxes.cls.cpu().numpy():
+                    class_name = model.names[int(cls_id)]
+                    class_counts[class_name] = class_counts.get(class_name, 0) + 1
+            
+                if class_counts:
+                    st.subheader("🧪 Detection Summary")
+                    table_data = []
+                    for name, count in class_counts.items():
+                        herbicide = herbicide_dict.get(name, "Unknown")
+                        table_data.append([name, count, herbicide])
+            
+                    st.table(
+                        {
+                            "Name of Weed": [row[0] for row in table_data],
+                            "Count": [row[1] for row in table_data],
+                            "Suitable Herbicide": [row[2] for row in table_data]
+                        }
+                    )
+                else:
+                    st.info("No weeds detected.")
+
     
     elif choice == "Signup":
          st.subheader("Signup")
