@@ -79,9 +79,9 @@ def main():
         if uploaded_file:
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Image", use_container_width=True)
-            if st.button("Detect Weeds"):
-                detected_image, class_ids = detect_objects(image)
-                st.image(detected_image, caption="Detected Weeds", use_container_width=True)
+        if st.button("Detect Weeds"):
+            detected_image, class_ids = detect_objects(image)
+            st.image(detected_image, caption="Detected Weeds", use_container_width=True)
 
             # Save if user is logged in
             if 'user' in st.session_state:
@@ -111,12 +111,10 @@ def main():
             }
 
             # Count detected classes
-            # Count detected classes
             class_counts = {}
             for cls_id in class_ids:
                 class_name = model.names[int(cls_id)]
                 class_counts[class_name] = class_counts.get(class_name, 0) + 1
-
 
             if class_counts:
                 st.subheader("🧪 Detection Summary")
@@ -134,7 +132,7 @@ def main():
                 )
             else:
                 st.info("No weeds detected.")
-                st.image(detected_image, caption="Detected Weeds", use_container_width=True)
+
     
     elif choice == "Signup":
          st.subheader("Signup")
