@@ -67,10 +67,11 @@ def main():
     choice = st.sidebar.selectbox("Menu", menu)
 
     if 'user' in st.session_state:
-        st.sidebar.markdown(f"**Welcome, {st.session_state['user']['username']}!**")
-        if st.sidebar.button("Logout"):
-            del st.session_state["user"]
-            st.sidebar.success("Logged out successfully!")
+            user_name = st.session_state['user']['username']
+            st.markdown(
+                f"<h3 style='text-align: left; color: #2E8B57;'>👋 Welcome, <b>{user_name}</b>!</h3>",
+                unsafe_allow_html=True
+            )
 
     if choice == "Home":
         st.subheader("Cotton Weed Detection")
